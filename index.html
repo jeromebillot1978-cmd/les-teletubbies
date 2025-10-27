@@ -1,535 +1,207 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bot Trading Crypto Multichain</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: white;
-        }
-        .container { max-width: 1800px; margin: 0 auto; }
-        h1 {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-            font-size: 2.5em;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-        }
-        .card {
-            background: rgba(30, 41, 59, 0.8);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .card h2 {
-            color: #60a5fa;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-            border-bottom: 2px solid #60a5fa;
-            padding-bottom: 10px;
-        }
-        .exchange-grid, .wallet-grid, .chain-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .exchange-btn, .wallet-btn, .chain-btn {
-            padding: 15px;
-            border: 2px solid rgba(96, 165, 250, 0.3);
-            background: rgba(15, 23, 42, 0.5);
-            color: white;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        .exchange-btn:hover, .wallet-btn:hover, .chain-btn:hover {
-            border-color: #60a5fa;
-            background: rgba(96, 165, 250, 0.1);
-            transform: translateY(-2px);
-        }
-        .exchange-btn.active, .wallet-btn.active, .chain-btn.active {
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-            border-color: #60a5fa;
-        }
-        .input-group { margin-bottom: 15px; }
-        .input-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #e2e8f0;
-            font-weight: 600;
-        }
-        .input-group input, .input-group select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid rgba(255,255,255,0.1);
-            background: rgba(15, 23, 42, 0.5);
-            color: white;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        .btn {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 10px;
-        }
-        .btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; }
-        .btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
-        .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(96, 165, 250, 0.4); }
-        .status {
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-weight: 600;
-            text-align: center;
-        }
-        .status.connected { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
-        .status.disconnected { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
-        .balance-display { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; }
-        .balance-item {
-            background: rgba(15, 23, 42, 0.5);
-            padding: 15px;
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .balance-label { font-size: 0.9em; color: #94a3b8; }
-        .balance-value { font-size: 1.5em; font-weight: bold; color: #60a5fa; margin-top: 5px; }
-        .log {
-            max-height: 400px;
-            overflow-y: auto;
-            background: rgba(15, 23, 42, 0.5);
-            padding: 15px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-        .log-entry {
-            padding: 8px;
-            margin-bottom: 5px;
-            border-radius: 5px;
-            border-left: 3px solid #60a5fa;
-            background: rgba(30, 41, 59, 0.5);
-        }
-        .log-entry.success { border-left-color: #10b981; }
-        .log-entry.error { border-left-color: #ef4444; }
-        .log-entry .timestamp { color: #94a3b8; font-size: 0.85em; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb { background: #60a5fa; border-radius: 10px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bot Trading Crypto</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);min-height:100vh;padding:20px;color:#fff}
+.container{max-width:1800px;margin:0 auto}
+h1{text-align:center;margin-bottom:30px;font-size:2em}
+.dashboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:20px}
+.card{background:rgba(30,41,59,0.8);border-radius:15px;padding:25px;box-shadow:0 10px 30px rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1)}
+.card h2{color:#60a5fa;margin-bottom:20px;font-size:1.3em;border-bottom:2px solid #60a5fa;padding-bottom:10px}
+.chain-grid,.wallet-grid,.exchange-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:15px}
+.chain-btn,.wallet-btn,.exchange-btn{padding:15px;border:2px solid rgba(96,165,250,0.3);background:rgba(15,23,42,0.5);color:#fff;border-radius:10px;cursor:pointer;transition:all 0.3s;font-weight:bold}
+.chain-btn:hover,.wallet-btn:hover,.exchange-btn:hover{border-color:#60a5fa;background:rgba(96,165,250,0.1);transform:translateY(-2px)}
+.chain-btn.active,.wallet-btn.active,.exchange-btn.active{background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);border-color:#60a5fa}
+.input-group{margin-bottom:15px}
+.input-group label{display:block;margin-bottom:5px;color:#e2e8f0;font-weight:600;font-size:14px}
+.input-group input,.input-group select{width:100%;padding:12px;border:2px solid rgba(255,255,255,0.1);background:rgba(15,23,42,0.5);color:#fff;border-radius:8px;font-size:14px}
+.btn{width:100%;padding:15px;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;transition:all 0.3s;margin-top:10px}
+.btn-primary{background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);color:#fff}
+.btn-success{background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:#fff}
+.btn-danger{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);color:#fff}
+.btn:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(96,165,250,0.4)}
+.status{padding:10px;border-radius:8px;margin-bottom:15px;font-weight:600;text-align:center;font-size:14px}
+.status.connected{background:rgba(16,185,129,0.2);color:#10b981;border:1px solid #10b981}
+.status.disconnected{background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef4444}
+.balance-display{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:15px}
+.balance-item{background:rgba(15,23,42,0.5);padding:15px;border-radius:10px;border:1px solid rgba(255,255,255,0.1)}
+.balance-label{font-size:0.9em;color:#94a3b8}
+.balance-value{font-size:1.5em;font-weight:bold;color:#60a5fa;margin-top:5px}
+.log{max-height:400px;overflow-y:auto;background:rgba(15,23,42,0.5);padding:15px;border-radius:8px;font-family:monospace;font-size:13px}
+.log-entry{padding:8px;margin-bottom:5px;border-radius:5px;border-left:3px solid #60a5fa;background:rgba(30,41,59,0.5)}
+.log-entry.success{border-left-color:#10b981}
+.log-entry.error{border-left-color:#ef4444}
+.log-entry .timestamp{color:#94a3b8;font-size:0.85em}
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>🤖 Bot de Trading Crypto Multichain</h1>
-        
-        <div class="dashboard">
-            <div class="card">
-                <h2>⛓️ Blockchain</h2>
-                <div class="chain-grid">
-                    <button class="chain-btn" id="chain-ethereum"><span>💎</span> Ethereum</button>
-                    <button class="chain-btn" id="chain-bsc"><span>🟡</span> BSC</button>
-                    <button class="chain-btn" id="chain-polygon"><span>🟣</span> Polygon</button>
-                    <button class="chain-btn" id="chain-arbitrum"><span>🔵</span> Arbitrum</button>
-                    <button class="chain-btn" id="chain-avalanche"><span>🔴</span> Avalanche</button>
-                    <button class="chain-btn" id="chain-solana"><span>🌐</span> Solana</button>
-                </div>
-                <div id="chainStatus" class="status disconnected">❌ Aucune blockchain sélectionnée</div>
-                <div class="input-group">
-                    <label>Network actuel</label>
-                    <input type="text" id="currentNetwork" readonly value="Non connecté">
-                </div>
-            </div>
+<div class="container">
+<h1>Bot Trading Crypto Multichain</h1>
+<div class="dashboard">
 
-            <div class="card">
-                <h2>💰 Wallet</h2>
-                <div class="wallet-grid">
-                    <button class="wallet-btn" id="wallet-metamask">🦊 MetaMask</button>
-                    <button class="wallet-btn" id="wallet-phantom">👻 Phantom</button>
-                    <button class="wallet-btn" id="wallet-trust">💙 Trust Wallet</button>
-                    <button class="wallet-btn" id="wallet-coinbase">💼 Coinbase</button>
-                </div>
-                <div id="walletStatus" class="status disconnected">❌ Aucun wallet connecté</div>
-                <div class="input-group">
-                    <label>Adresse Wallet</label>
-                    <input type="text" id="walletAddress" readonly placeholder="0x...">
-                </div>
-                <button class="btn btn-primary" id="connectWalletBtn">Connecter Wallet</button>
-                <div class="balance-display">
-                    <div class="balance-item">
-                        <div class="balance-label">ETH/BNB</div>
-                        <div class="balance-value" id="nativeBalance">0.0000</div>
-                    </div>
-                    <div class="balance-item">
-                        <div class="balance-label">USDT</div>
-                        <div class="balance-value" id="usdtBalance">0.00</div>
-                    </div>
-                </div>
-            </div>
+<div class="card">
+<h2>Blockchain</h2>
+<div class="chain-grid">
+<button class="chain-btn" id="chain-ethereum">Ethereum</button>
+<button class="chain-btn" id="chain-bsc">BSC</button>
+<button class="chain-btn" id="chain-polygon">Polygon</button>
+<button class="chain-btn" id="chain-arbitrum">Arbitrum</button>
+<button class="chain-btn" id="chain-avalanche">Avalanche</button>
+<button class="chain-btn" id="chain-solana">Solana</button>
+</div>
+<div id="chainStatus" class="status disconnected">Aucune blockchain</div>
+<div class="input-group">
+<label>Network actuel</label>
+<input type="text" id="currentNetwork" readonly value="Non connecte">
+</div>
+</div>
 
-            <div class="card">
-                <h2>🔗 Exchange</h2>
-                <div class="exchange-grid">
-                    <button class="exchange-btn" id="exchange-binance"><span>🟡</span> Binance</button>
-                    <button class="exchange-btn" id="exchange-coinbase"><span>🔵</span> Coinbase</button>
-                    <button class="exchange-btn" id="exchange-uphold"><span>🟢</span> Uphold</button>
-                    <button class="exchange-btn" id="exchange-kraken"><span>🟣</span> Kraken</button>
-                </div>
-                <div id="exchangeStatus" class="status disconnected">❌ Aucun exchange sélectionné</div>
-                <div class="input-group">
-                    <label>API Key</label>
-                    <input type="text" id="apiKey" placeholder="Clé API">
-                </div>
-                <div class="input-group">
-                    <label>API Secret</label>
-                    <input type="password" id="apiSecret" placeholder="Secret API">
-                </div>
-                <button class="btn btn-primary" id="connectExchangeBtn">Connecter Exchange</button>
-            </div>
+<div class="card">
+<h2>Wallet</h2>
+<div class="wallet-grid">
+<button class="wallet-btn" id="wallet-metamask">MetaMask</button>
+<button class="wallet-btn" id="wallet-phantom">Phantom</button>
+<button class="wallet-btn" id="wallet-trust">Trust</button>
+<button class="wallet-btn" id="wallet-coinbase">Coinbase</button>
+</div>
+<div id="walletStatus" class="status disconnected">Aucun wallet</div>
+<div class="input-group">
+<label>Adresse Wallet</label>
+<input type="text" id="walletAddress" readonly placeholder="0x...">
+</div>
+<button class="btn btn-primary" id="connectWalletBtn">Connecter Wallet</button>
+<button class="btn btn-primary" id="addTokensBtn" style="display:none">Ajouter Tokens</button>
+<div class="balance-display">
+<div class="balance-item">
+<div class="balance-label">Native</div>
+<div class="balance-value" id="nativeBalance">0.0000</div>
+</div>
+<div class="balance-item">
+<div class="balance-label">USDT</div>
+<div class="balance-value" id="usdtBalance">0.00</div>
+</div>
+</div>
+</div>
 
-            <div class="card">
-                <h2>⚙️ Configuration</h2>
-                <div id="botStatus" class="status disconnected">⏸️ Bot Arrêté</div>
-                <div class="input-group">
-                    <label>Paire de Trading</label>
-                    <select id="tradingPair">
-                        <option value="BTCUSDT">BTC/USDT</option>
-                        <option value="ETHUSDT">ETH/USDT</option>
-                        <option value="BNBUSDT">BNB/USDT</option>
-                        <option value="SOLUSDT">SOL/USDT</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>Montant par Trade (USDT)</label>
-                    <input type="number" id="tradeAmount" value="50" min="10">
-                </div>
-                <div class="input-group">
-                    <label>Stop Loss (%)</label>
-                    <input type="number" id="stopLoss" value="2" min="0.1" step="0.1">
-                </div>
-                <div class="input-group">
-                    <label>Take Profit (%)</label>
-                    <input type="number" id="takeProfit" value="3" min="0.1" step="0.1">
-                </div>
-                <button class="btn btn-success" id="startBotBtn">▶️ Démarrer Bot</button>
-                <button class="btn btn-danger" id="stopBotBtn" style="display:none;">⏹️ Arrêter Bot</button>
-                <div class="balance-display" style="margin-top: 20px;">
-                    <div class="balance-item">
-                        <div class="balance-label">Trades</div>
-                        <div class="balance-value" id="totalTrades">0</div>
-                    </div>
-                    <div class="balance-item">
-                        <div class="balance-label">P&L</div>
-                        <div class="balance-value" id="profitLoss">$0.00</div>
-                    </div>
-                </div>
-            </div>
+<div class="card">
+<h2>Exchange</h2>
+<div class="exchange-grid">
+<button class="exchange-btn" id="exchange-binance">Binance</button>
+<button class="exchange-btn" id="exchange-coinbase">Coinbase</button>
+<button class="exchange-btn" id="exchange-uphold">Uphold</button>
+<button class="exchange-btn" id="exchange-kraken">Kraken</button>
+</div>
+<div id="exchangeStatus" class="status disconnected">Aucun exchange</div>
+<div class="input-group">
+<label>API Key</label>
+<input type="text" id="apiKey" placeholder="Cle API">
+</div>
+<div class="input-group">
+<label>API Secret</label>
+<input type="password" id="apiSecret" placeholder="Secret">
+</div>
+<button class="btn btn-primary" id="connectExchangeBtn">Connecter Exchange</button>
+</div>
 
-            <div class="card" style="grid-column: span 2;">
-                <h2>📝 Logs en Temps Réel</h2>
-                <div class="log" id="logContainer"></div>
-            </div>
-        </div>
-    </div>
+<div class="card">
+<h2>Configuration</h2>
+<div id="botStatus" class="status disconnected">Bot Arrete</div>
+<div class="input-group">
+<label>Mode de Trading</label>
+<select id="tradingMode">
+<option value="demo">DEMO (Simulation)</option>
+<option value="real">REEL (Blockchain)</option>
+</select>
+</div>
+<div class="input-group">
+<label>Paire de Trading</label>
+<select id="tradingPair">
+<option value="BTCUSDT">BTC/USDT</option>
+<option value="ETHUSDT">ETH/USDT</option>
+<option value="BNBUSDT">BNB/USDT</option>
+<option value="SOLUSDT">SOL/USDT</option>
+</select>
+</div>
+<div class="input-group">
+<label>Montant par Trade (USDT)</label>
+<input type="number" id="tradeAmount" value="50" min="10">
+</div>
+<div class="input-group">
+<label>Stop Loss (%)</label>
+<input type="number" id="stopLoss" value="2" min="0.1" step="0.1">
+</div>
+<div class="input-group">
+<label>Take Profit (%)</label>
+<input type="number" id="takeProfit" value="3" min="0.1" step="0.1">
+</div>
+<button class="btn btn-success" id="startBotBtn">Demarrer Bot</button>
+<button class="btn btn-danger" id="stopBotBtn" style="display:none">Arreter Bot</button>
+<div class="balance-display" style="margin-top:20px">
+<div class="balance-item">
+<div class="balance-label">Trades</div>
+<div class="balance-value" id="totalTrades">0</div>
+</div>
+<div class="balance-item">
+<div class="balance-label">P&L</div>
+<div class="balance-value" id="profitLoss">$0.00</div>
+</div>
+</div>
+</div>
 
-    <script>
-        var state = {
-            selectedChain: null,
-            selectedWallet: null,
-            selectedExchange: null,
-            chainConnected: false,
-            walletConnected: false,
-            exchangeConnected: false,
-            walletAddress: null,
-            isRunning: false,
-            balance: { native: 0, usdt: 0 },
-            stats: { trades: 0, profitLoss: 0 }
-        };
+<div class="card" style="grid-column:span 2">
+<h2>Logs en Temps Reel</h2>
+<div class="log" id="logContainer"></div>
+</div>
 
-        var CHAINS = {
-            ethereum: { chainId: '0x1', name: 'Ethereum Mainnet', currency: 'ETH' },
-            bsc: { chainId: '0x38', name: 'BSC Mainnet', currency: 'BNB' },
-            polygon: { chainId: '0x89', name: 'Polygon Mainnet', currency: 'MATIC' },
-            arbitrum: { chainId: '0xa4b1', name: 'Arbitrum One', currency: 'ETH' },
-            avalanche: { chainId: '0xa86a', name: 'Avalanche C-Chain', currency: 'AVAX' },
-            solana: { chainId: 'solana', name: 'Solana Mainnet', currency: 'SOL' }
-        };
+</div>
+</div>
 
-        function addLog(msg, type) {
-            var c = document.getElementById('logContainer');
-            var e = document.createElement('div');
-            e.className = 'log-entry ' + (type || 'info');
-            var t = new Date().toLocaleTimeString();
-            e.innerHTML = '<span class="timestamp">[' + t + ']</span> ' + msg;
-            c.insertBefore(e, c.firstChild);
-            if (c.children.length > 100) c.removeChild(c.lastChild);
-        }
+<script>
+var state={selectedChain:null,selectedWallet:null,selectedExchange:null,chainConnected:false,walletConnected:false,exchangeConnected:false,walletAddress:null,isRunning:false,balance:{native:0,usdt:0},stats:{trades:0,profitLoss:0}};
+var CHAINS={ethereum:{chainId:'0x1',name:'Ethereum',currency:'ETH'},bsc:{chainId:'0x38',name:'BSC',currency:'BNB'},polygon:{chainId:'0x89',name:'Polygon',currency:'MATIC'},arbitrum:{chainId:'0xa4b1',name:'Arbitrum',currency:'ETH'},avalanche:{chainId:'0xa86a',name:'Avalanche',currency:'AVAX'},solana:{chainId:'solana',name:'Solana',currency:'SOL'}};
 
-        function selectChain(id) {
-            document.querySelectorAll('.chain-btn').forEach(function(b) { b.classList.remove('active'); });
-            document.getElementById('chain-' + id).classList.add('active');
-            state.selectedChain = id;
-            var info = CHAINS[id];
-            document.getElementById('chainStatus').className = 'status disconnected';
-            document.getElementById('chainStatus').textContent = info.name + ' sélectionné';
-            document.getElementById('currentNetwork').value = info.name;
-            addLog('Blockchain ' + info.name + ' sélectionnée');
-        }
+function log(m,t){var c=document.getElementById('logContainer');var e=document.createElement('div');e.className='log-entry '+(t||'info');var ts=new Date().toLocaleTimeString();e.innerHTML='<span class="timestamp">['+ts+']</span> '+m;c.insertBefore(e,c.firstChild);if(c.children.length>100)c.removeChild(c.lastChild)}
 
-        function selectWallet(id) {
-            document.querySelectorAll('.wallet-btn').forEach(function(b) { b.classList.remove('active'); });
-            document.getElementById('wallet-' + id).classList.add('active');
-            state.selectedWallet = id;
-            addLog('Wallet ' + id + ' sélectionné');
-        }
+function selectChain(id){document.querySelectorAll('.chain-btn').forEach(function(b){b.classList.remove('active')});document.getElementById('chain-'+id).classList.add('active');state.selectedChain=id;var i=CHAINS[id];document.getElementById('chainStatus').className='status disconnected';document.getElementById('chainStatus').textContent=i.name+' selectionne';document.getElementById('currentNetwork').value=i.name;log('Blockchain '+i.name+' selectionnee')}
 
-        function selectExchange(id) {
-            document.querySelectorAll('.exchange-btn').forEach(function(b) { b.classList.remove('active'); });
-            document.getElementById('exchange-' + id).classList.add('active');
-            state.selectedExchange = id;
-            document.getElementById('exchangeStatus').textContent = id.toUpperCase() + ' sélectionné';
-            addLog('Exchange ' + id.toUpperCase() + ' sélectionné');
-        }
+function selectWallet(id){document.querySelectorAll('.wallet-btn').forEach(function(b){b.classList.remove('active')});document.getElementById('wallet-'+id).classList.add('active');state.selectedWallet=id;log('Wallet '+id+' selectionne')}
 
-        async function connectWallet() {
-            if (!state.selectedWallet) { addLog('Sélectionnez un wallet', 'error'); return; }
-            if (!state.selectedChain) { addLog('Sélectionnez une blockchain', 'error'); return; }
-            if (state.selectedWallet === 'metamask') {
-                await connectMetaMask();
-            } else if (state.selectedWallet === 'phantom') {
-                await connectPhantom();
-            } else {
-                simulateWallet();
-            }
-        }
+function selectExchange(id){document.querySelectorAll('.exchange-btn').forEach(function(b){b.classList.remove('active')});document.getElementById('exchange-'+id).classList.add('active');state.selectedExchange=id;document.getElementById('exchangeStatus').textContent=id.toUpperCase()+' selectionne';log('Exchange '+id+' selectionne')}
 
-        async function connectMetaMask() {
-            if (typeof window.ethereum === 'undefined') {
-                addLog('MetaMask non installé!', 'error');
-                if (confirm('Installer MetaMask?')) window.open('https://metamask.io/download/', '_blank');
-                return;
-            }
-            try {
-                addLog('Connexion MetaMask...', 'success');
-                var accs = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                if (!accs || accs.length === 0) throw new Error('Aucun compte');
-                var addr = accs[0];
-                state.walletAddress = addr;
-                document.getElementById('walletAddress').value = addr;
-                addLog('Connecté: ' + addr.substring(0, 10) + '...', 'success');
-                var info = CHAINS[state.selectedChain];
-                if (info.chainId !== 'solana') await switchChain(info.chainId);
-                await getBalance(addr);
-                state.walletConnected = true;
-                state.chainConnected = true;
-                document.getElementById('walletStatus').className = 'status connected';
-                document.getElementById('walletStatus').textContent = 'Connecté: ' + addr.substring(0, 10) + '...';
-                document.getElementById('chainStatus').className = 'status connected';
-            } catch (err) {
-                if (err.code === 4001) addLog('Connexion refusée', 'error');
-                else addLog('Erreur: ' + err.message, 'error');
-            }
-        }
+async function connectWallet(){if(!state.selectedWallet){log('Selectionnez un wallet','error');return}if(!state.selectedChain){log('Selectionnez une blockchain','error');return}if(state.selectedWallet==='metamask'){await connectMeta()}else if(state.selectedWallet==='phantom'){await connectPhantom()}else{simWallet()}}
 
-        async function switchChain(cid) {
-            try {
-                await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: cid }] });
-                addLog('Réseau changé', 'success');
-            } catch (err) {
-                if (err.code === 4902) await addChain(cid);
-                else throw err;
-            }
-        }
+async function connectMeta(){if(typeof window.ethereum==='undefined'){log('MetaMask non installe','error');if(confirm('Installer MetaMask?'))window.open('https://metamask.io/download/','_blank');return}try{log('Connexion MetaMask...','success');var a=await window.ethereum.request({method:'eth_requestAccounts'});if(!a||a.length===0)throw new Error('Aucun compte');var addr=a[0];state.walletAddress=addr;document.getElementById('walletAddress').value=addr;log('Connecte: '+addr.substring(0,10)+'...','success');var i=CHAINS[state.selectedChain];if(i.chainId!=='solana')await switchChain(i.chainId);await getBal(addr);state.walletConnected=true;state.chainConnected=true;document.getElementById('walletStatus').className='status connected';document.getElementById('walletStatus').textContent='Connecte: '+addr.substring(0,10)+'...';document.getElementById('chainStatus').className='status connected';document.getElementById('addTokensBtn').style.display='block';log('Cliquez Ajouter Tokens pour USDT','success')}catch(e){if(e.code===4001)log('Connexion refusee','error');else log('Erreur: '+e.message,'error')}}
 
-        async function addChain(cid) {
-            var info = CHAINS[state.selectedChain];
-            try {
-                await window.ethereum.request({
-                    method: 'wallet_addEthereumChain',
-                    params: [{ chainId: cid, chainName: info.name, rpcUrls: ['https://bsc-dataseed.binance.org'], nativeCurrency: { name: info.currency, symbol: info.currency, decimals: 18 } }]
-                });
-                addLog('Réseau ajouté', 'success');
-            } catch (err) {
-                addLog('Erreur: ' + err.message, 'error');
-            }
-        }
+async function switchChain(c){try{await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:c}]});log('Reseau change','success')}catch(e){if(e.code===4902)await addChain(c);else throw e}}
 
-        async function getBalance(addr) {
-            try {
-                var bal = await window.ethereum.request({ method: 'eth_getBalance', params: [addr, 'latest'] });
-                var eth = parseInt(bal, 16) / 1e18;
-                state.balance.native = eth.toFixed(4);
-                document.getElementById('nativeBalance').textContent = state.balance.native;
-                addLog('Balance: ' + state.balance.native + ' ' + CHAINS[state.selectedChain].currency, 'success');
-            } catch (err) {
-                addLog('Erreur balance: ' + err.message, 'error');
-            }
-        }
+async function addChain(c){var i=CHAINS[state.selectedChain];try{await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:c,chainName:i.name,rpcUrls:['https://bsc-dataseed.binance.org'],nativeCurrency:{name:i.currency,symbol:i.currency,decimals:18}}]});log('Reseau ajoute','success')}catch(e){log('Erreur: '+e.message,'error')}}
 
-        async function connectPhantom() {
-            if (typeof window.solana === 'undefined' || !window.solana.isPhantom) {
-                addLog('Phantom non installé!', 'error');
-                if (confirm('Installer Phantom?')) window.open('https://phantom.app/', '_blank');
-                return;
-            }
-            try {
-                addLog('Connexion Phantom...', 'success');
-                var resp = await window.solana.connect();
-                var addr = resp.publicKey.toString();
-                state.walletAddress = addr;
-                document.getElementById('walletAddress').value = addr;
-                addLog('Connecté: ' + addr.substring(0, 10) + '...', 'success');
-                state.walletConnected = true;
-                state.chainConnected = true;
-                document.getElementById('walletStatus').className = 'status connected';
-                document.getElementById('walletStatus').textContent = 'Connecté (Solana)';
-                document.getElementById('chainStatus').className = 'status connected';
-            } catch (err) {
-                addLog('Erreur: ' + err.message, 'error');
-            }
-        }
+async function getBal(a){try{var b=await window.ethereum.request({method:'eth_getBalance',params:[a,'latest']});var eth=parseInt(b,16)/1e18;state.balance.native=eth.toFixed(4);document.getElementById('nativeBalance').textContent=state.balance.native;log('Balance: '+state.balance.native+' '+CHAINS[state.selectedChain].currency,'success')}catch(e){log('Erreur balance: '+e.message,'error')}}
 
-        function simulateWallet() {
-            state.walletConnected = true;
-            state.chainConnected = true;
-            document.getElementById('walletStatus').className = 'status connected';
-            document.getElementById('walletStatus').textContent = 'Connecté (DEMO)';
-            document.getElementById('chainStatus').className = 'status connected';
-            state.balance.native = (Math.random() * 2).toFixed(4);
-            document.getElementById('nativeBalance').textContent = state.balance.native;
-            addLog('Mode DEMO activé', 'success');
-        }
+async function connectPhantom(){if(typeof window.solana==='undefined'||!window.solana.isPhantom){log('Phantom non installe','error');if(confirm('Installer Phantom?'))window.open('https://phantom.app/','_blank');return}try{log('Connexion Phantom...','success');var r=await window.solana.connect();var a=r.publicKey.toString();state.walletAddress=a;document.getElementById('walletAddress').value=a;log('Connecte: '+a.substring(0,10)+'...','success');state.walletConnected=true;state.chainConnected=true;document.getElementById('walletStatus').className='status connected';document.getElementById('walletStatus').textContent='Connecte (Solana)';document.getElementById('chainStatus').className='status connected'}catch(e){log('Erreur: '+e.message,'error')}}
 
-        function connectExchange() {
-            if (!state.selectedExchange) { addLog('Sélectionnez un exchange', 'error'); return; }
-            addLog('Connexion ' + state.selectedExchange.toUpperCase() + ' (DEMO)', 'success');
-            state.exchangeConnected = true;
-            document.getElementById('exchangeStatus').className = 'status connected';
-            document.getElementById('exchangeStatus').textContent = state.selectedExchange.toUpperCase() + ' connecté (DEMO)';
-        }
+function simWallet(){state.walletConnected=true;state.chainConnected=true;document.getElementById('walletStatus').className='status connected';document.getElementById('walletStatus').textContent='Connecte (DEMO)';document.getElementById('chainStatus').className='status connected';state.balance.native=(Math.random()*2).toFixed(4);document.getElementById('nativeBalance').textContent=state.balance.native;log('Mode DEMO active','success')}
 
-        function startBot() {
-            if (!state.walletConnected && !state.exchangeConnected) {
-                addLog('Connectez un wallet ou exchange', 'error');
-                return;
-            }
-            state.isRunning = true;
-            document.getElementById('botStatus').className = 'status connected';
-            document.getElementById('botStatus').textContent = 'Bot actif';
-            document.getElementById('startBotBtn').style.display = 'none';
-            document.getElementById('stopBotBtn').style.display = 'block';
-            addLog('Bot démarré!', 'success');
-            setTimeout(function() { if (state.isRunning) executeTrade(); }, 10000);
-        }
+async function addTokens(){try{var c=await window.ethereum.request({method:'eth_chainId'});var tokens={'0x1':[{address:'0xdAC17F958D2ee523a2206206994597C13D831ec7',symbol:'USDT',decimals:6}],'0x38':[{address:'0x55d398326f99059fF775485246999027B3197955',symbol:'USDT',decimals:18}],'0x89':[{address:'0xc2132D05D31c914a87C6611C10748AEb04B58e8F',symbol:'USDT',decimals:6}]};var ct=tokens[c];if(!ct)return;log('Ajout tokens...','success');for(var i=0;i<ct.length;i++){var t=ct[i];try{await window.ethereum.request({method:'wallet_watchAsset',params:{type:'ERC20',options:{address:t.address,symbol:t.symbol,decimals:t.decimals}}});log('Token '+t.symbol+' ajoute','success')}catch(e){log('Token '+t.symbol+' deja present','success')}}}catch(e){log('Erreur: '+e.message,'error')}}
 
-        function stopBot() {
-            state.isRunning = false;
-            document.getElementById('botStatus').className = 'status disconnected';
-            document.getElementById('botStatus').textContent = 'Bot arrêté';
-            document.getElementById('startBotBtn').style.display = 'block';
-            document.getElementById('stopBotBtn').style.display = 'none';
-            addLog('Bot arrêté', 'error');
-        }
+function connectEx(){if(!state.selectedExchange){log('Selectionnez un exchange','error');return}log('Connexion '+state.selectedExchange.toUpperCase()+' (DEMO)','success');state.exchangeConnected=true;document.getElementById('exchangeStatus').className='status connected';document.getElementById('exchangeStatus').textContent=state.selectedExchange.toUpperCase()+' connecte'}
 
-        async function executeTrade() {
-            if (!state.isRunning) return;
-            var amt = parseFloat(document.getElementById('tradeAmount').value);
-            var pair = document.getElementById('tradingPair').value;
-            addLog('Trade: ' + pair + ' - ' + amt + ' USDT', 'success');
-            if (state.walletConnected && typeof window.ethereum !== 'undefined') {
-                await doBlockchainTrade(amt);
-            } else {
-                doSimTrade(amt);
-            }
-            if (state.isRunning) setTimeout(executeTrade, 15000);
-        }
+function startBot(){if(!state.walletConnected&&!state.exchangeConnected){log('Connectez wallet ou exchange','error');return}state.isRunning=true;document.getElementById('botStatus').className='status connected';document.getElementById('botStatus').textContent='Bot actif';document.getElementById('startBotBtn').style.display='none';document.getElementById('stopBotBtn').style.display='block';log('Bot demarre!','success');setTimeout(function(){if(state.isRunning)execTrade()},10000)}
 
-        async function doBlockchainTrade(amt) {
-            try {
-                addLog('TRANSACTION RÉELLE', 'success');
-                var accs = await window.ethereum.request({ method: 'eth_accounts' });
-                var from = accs[0];
-                var cid = await window.ethereum.request({ method: 'eth_chainId' });
-                addLog('Montant: 0.01 ' + CHAINS[state.selectedChain].currency, 'success');
-                addLog('VÉRIFIEZ avant de confirmer!', 'error');
-                var dead = '0x000000000000000000000000000000000000dEaD';
-                var val = '0x' + (10000000000000000).toString(16);
-                var tx = { from: from, to: dead, value: val };
-                var hash = await window.ethereum.request({ method: 'eth_sendTransaction', params: [tx] });
-                addLog('TX envoyée: ' + hash.substring(0, 20) + '...', 'success');
-                var exps = { '0x1': 'https://etherscan.io/tx/', '0x38': 'https://bscscan.com/tx/', '0x89': 'https://polygonscan.com/tx/', '0xa4b1': 'https://arbiscan.io/tx/', '0xa86a': 'https://snowtrace.io/tx/' };
-                addLog('Explorer: ' + (exps[cid] || '') + hash, 'success');
-                state.stats.trades++;
-                var prof = (Math.random() - 0.4) * amt * 0.05;
-                state.stats.profitLoss += prof;
-                document.getElementById('totalTrades').textContent = state.stats.trades;
-                document.getElementById('profitLoss').textContent = '$' + state.stats.profitLoss.toFixed(2);
-                setTimeout(function() { getBalance(from); }, 5000);
-            } catch (err) {
-                if (err.code === 4001) addLog('TX refusée', 'error');
-                else if (err.code === -32603) addLog('Fonds insuffisants', 'error');
-                else addLog('Erreur: ' + err.message, 'error');
-            }
-        }
+function stopBot(){state.isRunning=false;document.getElementById('botStatus').className='status disconnected';document.getElementById('botStatus').textContent='Bot arrete';document.getElementById('startBotBtn').style.display='block';document.getElementById('stopBotBtn').style.display='none';log('Bot arrete','error')}
 
-        function doSimTrade(amt) {
-            var prof = (Math.random() - 0.35) * amt * 0.05;
-            state.stats.trades++;
-            state.stats.profitLoss += prof;
-            addLog('Trade simulé: ' + (prof > 0 ? 'PROFIT' : 'PERTE') + ' ' + prof.toFixed(2) + ' USDT', prof > 0 ? 'success' : 'error');
-            document.getElementById('totalTrades').textContent = state.stats.trades;
-            document.getElementById('profitLoss').textContent = '$' + state.stats.profitLoss.toFixed(2);
-        }
+async function execTrade(){if(!state.isRunning)return;var amt=parseFloat(document.getElementById('tradeAmount').value);var pair=document.getElementById('tradingPair').value;var mode=document.getElementById('tradingMode').value;log('Trade: '+pair+' - '+amt+' USDT','success');if(mode==='real'&&state.walletConnected&&typeof window.ethereum!=='undefined'){log('MODE REEL active','error');await doReal(amt)}else{log('MODE DEMO active','success');doSim(amt)}if(state.isRunning)setTimeout(execTrade,15000)}
 
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('chain-ethereum').onclick = function() { selectChain('ethereum'); };
-            document.getElementById('chain-bsc').onclick = function() { selectChain('bsc'); };
-            document.getElementById('chain-polygon').onclick = function() { selectChain('polygon'); };
-            document.getElementById('chain-arbitrum').onclick = function() { selectChain('arbitrum'); };
-            document.getElementById('chain-avalanche').onclick = function() { selectChain('avalanche'); };
-            document.getElementById('chain-solana').onclick = function() { selectChain('solana'); };
-            document.getElementById('wallet-metamask').onclick = function() { selectWallet('metamask'); };
-            document.getElementById('wallet-phantom').onclick = function() { selectWallet('phantom'); };
-            document.getElementById('wallet-trust').onclick = function() { selectWallet('trust'); };
-            document.getElementById('wallet-coinbase').onclick = function() { selectWallet('coinbase'); };
-            document.getElementById('exchange-binance').onclick = function() { selectExchange('binance'); };
-            document.getElementById('exchange-coinbase').onclick = function() { selectExchange('coinbase'); };
-            document.getElementById('exchange-uphold').onclick = function() { selectExchange('uphold'); };
-            document.getElementById('exchange-kraken').onclick = function() { selectExchange('kraken'); };
-            document.getElementById('connectWalletBtn').onclick = connectWallet;
-            document.getElementById('connectExchangeBtn').onclick = connectExchange;
-            document.getElementById('startBotBtn').onclick = startBot;
-            document.getElementById('stopBotBtn').onclick = stopBot;
-            addLog('Système prêt!', 'success');
-            addLog('1. Sélectionnez blockchain', 'success');
-            addLog('2. Connectez wallet', 'success');
-            addLog('3. Démarrez le bot', 'success');
-        });
-    </script>
+async function doReal(amt){try{log('SWAP DEX REEL','success');var a=await window.ethereum.request({method:'eth_accounts'});var from=a[0];var c=await window.ethereum.request({method:'eth_chainId'});var routers={'0x1':'0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D','0x38':'0x10ED43C718714eb63d5aA57B78B54704E256024E','0x89':'0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff'};var weth={'0x1':'0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2','0x38':'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c','0x89':'0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270'};var usdt={'0x1':'0xdAC17F958D2ee523a2206206994597C13D831ec7','0x38':'0x55d398326f99059fF775485246999027B3197955','0x89':'0xc2132D05D31c914a87C6611C10748AEb04B58e8F'};var r=routers[c];var w=weth[c];var u=usdt[c];if(!r||!w||!u){log('Blockchain non supportee','error');return}log('Swap BNB vers USDT','success');log('Montant: 0.01 '+CHAINS[state.selectedChain].currency,'success');log('ATTENTION: Transaction reelle!','error');var val='0x'+(10000000000000000).toString(16);var dl=Math.floor(Date.now()/1000)+1200;var dlh=dl.toString(16).padStart(64,'0');var fromClean=from.substring(2).toLowerCase();var wClean=w.substring(2).toLowerCase();var uClean=u.substring(2).toLowerCase();var data='0x7ff36ab5'+'0000000000000000000000000000000000000000000000000000000000000000'+'0000000000000000000000000000000000000000000000000000000000000080'+'000000000000000000000000'+fromClean+dlh+'0000000000000000000000000000000000000000000000000000000000000002'+'000000000000000000000000'+wClean+'000000000000000000000000'+uClean;var tx={from:from,to:r,value:val,data:data,gas:'0x493E0'};log('Confirmez dans MetaMask...','success');var h=await window.ethereum.request({method:'eth_sendTransaction',params:[tx]});log('SWAP envoye: '+h.substring(0,20)+'...','success');var exp={'0x1':'https://etherscan.io/tx/','0x38':'https://bscscan.com/tx/','0x89':'https://polygonscan.com/tx/'};log('Explorer: '+(exp[c]||'')+h,'success');log('Vous recevrez USDT!','success');state.stats.trades++;var p=(Math.random()-0.4)*amt*0.05;state.stats.profitLoss+=p;document.getElementById('totalTrades').textContent=state.stats.trades;document.getElementById('profitLoss').textContent='$'+state.stats.profitLoss.toFixed(2);setTimeout(function(){getBal(from)},5000)}catch(e){if(e.code===4001)log('TX refusee','error');else if(e.code===-32603)log('Fonds insuffisants','error');else log('Erreur: '+e.message,'error')}}
+
+function doSim(amt){var p=(Math.random()-0.35)*amt*0.05;state.stats.trades++;state.stats.profitLoss+=p;log('Trade simule: '+(p>0?'PROFIT':'PERTE')+' '+p.toFixed(2)+' USDT',p>0?'success':'error');document.getElementById('totalTrades').textContent=state.stats.trades;document.getElementById('profitLoss').textContent='$'+state.stats.profitLoss.toFixed(2)}
+
+document.addEventListener('DOMContentLoaded',function(){document.getElementById('chain-ethereum').onclick=function(){selectChain('ethereum')};document.getElementById('chain-bsc').onclick=function(){selectChain('bsc')};document.getElementById('chain-polygon').onclick=function(){selectChain('polygon')};document.getElementById('chain-arbitrum').onclick=function(){selectChain('arbitrum')};document.getElementById('chain-avalanche').onclick=function(){selectChain('avalanche')};document.getElementById('chain-solana').onclick=function(){selectChain('solana')};document.getElementById('wallet-metamask').onclick=function(){selectWallet('metamask')};document.getElementById('wallet-phantom').onclick=function(){selectWallet('phantom')};document.getElementById('wallet-trust').onclick=function(){selectWallet('trust')};document.getElementById('wallet-coinbase').onclick=function(){selectWallet('coinbase')};document.getElementById('exchange-binance').onclick=function(){selectExchange('binance')};document.getElementById('exchange-coinbase').onclick=function(){selectExchange('coinbase')};document.getElementById('exchange-uphold').onclick=function(){selectExchange('uphold')};document.getElementById('exchange-kraken').onclick=function(){selectExchange('kraken')};document.getElementById('connectWalletBtn').onclick=connectWallet;document.getElementById('addTokensBtn').onclick=addTokens;document.getElementById('connectExchangeBtn').onclick=connectEx;document.getElementById('startBotBtn').onclick=startBot;document.getElementById('stopBotBtn').onclick=stopBot;log('Systeme pret!','success');log('1. Selectionnez blockchain','success');log('2. Connectez wallet','success');log('3. Demarrez le bot','success')});
+</script>
 </body>
 </html>
